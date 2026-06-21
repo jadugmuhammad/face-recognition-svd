@@ -23,8 +23,8 @@ Semua dataset diunduh dan diekstrak **secara otomatis** oleh skrip saat Anda mem
 
 | Dataset | Kegunaan |
 |---|---|
-| **AT&T / ORL** | Bangun eigenspace dasar & Kalibrasi Threshold (Isolasi untuk metrik yang ketat) |
-| **LFW (Labeled Faces in the Wild)** | Bangun eigenspace (menyerap variasi senyum, cahaya, dan pose ekstrem) |
+| **AT&T / ORL** | Membangun eigenspace dasar & Kalibrasi Threshold (Isolasi untuk metrik yang ketat) |
+| **LFW (Labeled Faces in the Wild)** | Membangun eigenspace (menyerap variasi senyum, cahaya, dan pose ekstrem) |
 
 ## Instalasi
 
@@ -34,7 +34,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Menjalankan
+## Running
 
 ```bash
 streamlit run app/main.py
