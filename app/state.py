@@ -10,6 +10,7 @@ def init_session_state():
         "threshold": 0.5,
         "metric_mode": "ensemble",  # "ensemble" | "euclidean" | "cosine" | "mahalanobis"
         "n_components": 50,
+        "artifacts_loaded": False,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)

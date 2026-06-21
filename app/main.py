@@ -7,41 +7,97 @@ import sys
 # regardless of where `streamlit run` is invoked from.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import numpy as np
 import streamlit as st
+from PIL import Image
 
 from app import state
 from app.components import calibration_view, eigenspace_explorer, result_view, upload_widget
 
-st.set_page_config(page_title="Face Recognition (PCA/SVD)", layout="wide")
+st.set_page_config(
+    page_title="Face Recognition (PCA/SVD)",
+    page_icon="🔍",
+    layout="wide",
+)
 state.init_session_state()
 
-st.title("Face recognition dengan PCA/SVD")
+# --- Sidebar ---
+with st.sidebar:
+    st.header("⚙️ Pengaturan")
+
+    st.session_state["metric_mode"] = st.selectbox(
+        "Mode metrik",
+        options=["ensemble", "euclidean", "cosine", "mahalanobis"],
+        index=["ensemble", "euclidean", "cosine", "mahalanobis"].index(
+            st.session_state["metric_mode"]
+        ),
+        help="Ensemble menggabungkan ketiga metrik; pilih satu untuk mode tunggal.",
+    )
+
+    st.session_state["threshold"] = st.slider(
+        "Threshold keputusan",
+        min_value=0.0,
+        max_value=1.0,
+        value=st.session_state["threshold"],
+        step=0.01,
+        help="Confidence di atas threshold → SAMA, di bawah → BEDA.",
+    )
+
+    st.divider()
+    st.caption(
+        "**Face Recognition (PCA/SVD)**\n\n"
+        "Membandingkan dua wajah tanpa deep learning — murni Eigenfaces, "
+        "preprocessing, dan multi-metric matching."
+    )
+
+# --- Main content ---
+st.title("🔍 Face Recognition dengan PCA/SVD")
 st.caption(
-    "Membandingkan dua wajah tanpa deep learning -- murni Eigenfaces, "
+    "Membandingkan dua wajah tanpa deep learning — murni Eigenfaces, "
     "preprocessing, dan multi-metric matching."
 )
 
 tab_compare, tab_eigenspace, tab_calibration = st.tabs(
-    ["Bandingkan wajah", "Eksplorasi eigenspace", "Kalibrasi & validasi"]
+    ["🔄 Bandingkan wajah", "🧠 Eksplorasi eigenspace", "📊 Kalibrasi & validasi"]
 )
 
 with tab_compare:
     image_a, image_b = upload_widget.render()
 
-    threshold = st.slider(
-        "Threshold", min_value=0.0, max_value=1.0,
-        value=st.session_state["threshold"], step=0.01,
-    )
-    st.session_state["threshold"] = threshold
-
     if image_a is not None and image_b is not None:
-        if st.button("Bandingkan", type="primary"):
-            st.warning(
-                "core.pipeline.compare belum diimplementasikan -- ini baru "
-                "placeholder dari tahap setup struktur repo."
-            )
-            # TODO: panggil core.pipeline.compare(image_a, image_b, config) di sini
-            # dan simpan hasilnya ke st.session_state["comparison_result"]
+        if st.button("🔍 Bandingkan", type="primary", use_container_width=True):
+            with st.spinner("Memproses wajah..."):
+                try:
+                    # Convert uploaded files to grayscale numpy arrays
+                    img_a = np.array(
+                        Image.open(image_a).convert("L"), dtype=np.uint8
+                    )
+                    img_b = np.array(
+                        Image.open(image_b).convert("L"), dtype=np.uint8
+                    )
+
+                    from core.pipeline import compare
+
+                    result = compare(
+                        img_a,
+                        img_b,
+                        config={
+                            "metric_mode": st.session_state["metric_mode"],
+                            "threshold": st.session_state["threshold"],
+                        },
+                    )
+                    st.session_state["comparison_result"] = result
+
+                except FileNotFoundError as e:
+                    st.error(
+                        f"⚠️ Artifacts belum dibangun. Jalankan:\n\n"
+                        f"```\npython scripts/build_eigenspace.py\n```\n\n"
+                        f"Detail: {e}"
+                    )
+                except ValueError as e:
+                    st.warning(f"⚠️ {e}")
+                except Exception as e:
+                    st.error(f"❌ Terjadi error: {e}")
 
     result_view.render(st.session_state["comparison_result"])
 

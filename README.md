@@ -6,17 +6,15 @@ robust ketika dua foto diambil pada usia yang berbeda.
 
 ## Status
 
-Repo ini baru di tahap **setup struktur**. Modul-modul di `core/` dan
-`data/loaders/` masih berupa skeleton (`raise NotImplementedError`) — lihat
-checklist di bawah.
+Repo ini telah **selesai diimplementasikan** secara end-to-end. Semua modul di `core/`, `data/loaders/`, dan `app/` telah berfungsi penuh (98/98 tests passed).
 
-- [x] `data/loaders/*` — parsing dataset
-- [x] `core/preprocessing/*` — deteksi wajah, alignment, normalisasi
+- [x] `data/loaders/*` — parsing dataset (AT&T, Yale, FG-NET)
+- [x] `core/preprocessing/*` — deteksi wajah, alignment (landmark/Haar), normalisasi (CLAHE)
 - [x] `core/decomposition/eigenfaces.py` — PCA/SVD
-- [x] `core/matching/*` — multi-metric distance + ensemble + threshold
-- [ ] `core/pipeline.py` — orkestrasi end-to-end
-- [ ] `scripts/build_eigenspace.py` — build + kalibrasi artifacts
-- [x] `app/*` — kerangka UI Streamlit (sudah jalan, tapi logikanya placeholder)
+- [x] `core/matching/*` — multi-metric distance (Euclidean, Cosine, Mahalanobis) + ensemble + threshold (ROC/EER)
+- [x] `core/pipeline.py` — orkestrasi end-to-end
+- [x] `scripts/build_eigenspace.py` — build + kalibrasi artifacts
+- [x] `app/*` — UI Streamlit terintegrasi penuh
 
 ## Arsitektur
 
@@ -56,8 +54,7 @@ pip install -r requirements.txt
 streamlit run app/main.py
 ```
 
-Untuk membangun eigenspace + kalibrasi threshold (setelah dataset diunduh
-dan modul `core`/`data` selesai diimplementasikan):
+Untuk membangun eigenspace + kalibrasi threshold (pastikan semua dataset sudah diunduh ke `data/raw/`):
 
 ```bash
 python scripts/build_eigenspace.py
