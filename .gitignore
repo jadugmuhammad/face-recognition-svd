@@ -6,8 +6,9 @@ env/
 .streamlit/
 data/raw/*
 !data/raw/.gitkeep
-artifacts/*
-!artifacts/.gitkeep
+# Artifacts (wajib di-push untuk deployment Streamlit Cloud)
+# artifacts/*
+# !artifacts/.gitkeep
 .DS_Store
 *.egg-info/
 notes/
