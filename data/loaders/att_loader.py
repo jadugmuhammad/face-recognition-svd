@@ -1,30 +1,73 @@
 """Loads the AT&T (ORL) face dataset.
 
-Expected layout after manual download (see README):
-    data/raw/att_faces/Training/s1/ ... s40/  (9 images each)
-    data/raw/att_faces/Testing/s1/  ... s40/  (1 image each)
+Automatically downloads and extracts the dataset if not found.
 """
 
 import os
 import re
+import sys
+import zipfile
+import urllib.request
 
 import numpy as np
 from PIL import Image
 
-# Matches subject folder names like "s1", "s23", etc.
+_ATT_URL = "https://www.cl.cam.ac.uk/research/dtg/attarchive/pub/data/att_faces.zip"
+_ATT_FILENAME = "att_faces.zip"
+_ATT_EXTRACT_DIR = "att_faces"
 _SUBJECT_DIR_RE = re.compile(r"^s(\d+)$")
 
+def _download_progress(count, block_size, total_size):
+    """Callback for urlretrieve to print download progress."""
+    global _last_percent
+    percent = int(count * block_size * 100 / total_size)
+    
+    if percent % 10 == 0 and percent != getattr(_download_progress, "last_percent", -1):
+        sys.stdout.write(f"\rDownloading AT&T Dataset... {percent}%")
+        sys.stdout.flush()
+        _download_progress.last_percent = percent
+        if percent >= 100:
+            sys.stdout.write("\rDownloading AT&T Dataset... 100% (Done)\n")
+            sys.stdout.flush()
 
-def load(root_dir="data/raw/att_faces", split="both"):
+
+def download_and_extract(raw_dir="data/raw"):
+    """Downloads and extracts AT&T if it doesn't exist."""
+    os.makedirs(raw_dir, exist_ok=True)
+    extract_path = os.path.join(raw_dir, _ATT_EXTRACT_DIR)
+    
+    if os.path.isdir(extract_path) and len(os.listdir(extract_path)) > 0:
+        return extract_path
+        
+    archive_path = os.path.join(raw_dir, _ATT_FILENAME)
+    
+    if not os.path.isfile(archive_path):
+        print("AT&T Dataset not found. Starting download (~4MB)...")
+        _download_progress.last_percent = -1
+        try:
+            urllib.request.urlretrieve(_ATT_URL, archive_path, reporthook=_download_progress)
+        except Exception as e:
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
+            raise RuntimeError(f"Failed to download AT&T dataset: {e}")
+            
+    print("Extracting AT&T Dataset...")
+    try:
+        with zipfile.ZipFile(archive_path, "r") as zip_ref:
+            zip_ref.extractall(extract_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to extract AT&T dataset: {e}")
+        
+    print("Extraction complete.")
+    return extract_path
+
+
+def load(root_dir="data/raw", split="both"):
     """Load AT&T face images.
 
-    The dataset is expected to be pre-split into ``Training/`` and
-    ``Testing/`` subdirectories, each containing per-subject folders
-    (``s1/``, ``s2/``, …) with ``.pgm`` images.
-
     Args:
-        root_dir: Path to the extracted AT&T dataset root.
-        split: Which partition to load — ``"train"``, ``"test"``, or
+        root_dir: The directory where `data/raw` is located.
+        split: Which partition to load — ``"train"`` (images 1-9), ``"test"`` (image 10), or
             ``"both"`` (default).
 
     Returns:
@@ -32,11 +75,6 @@ def load(root_dir="data/raw/att_faces", split="both"):
         ``(images, subject_ids)`` where every image is a 2-D
         grayscale ``uint8`` array and the corresponding subject ID
         is a string like ``"s01"``.
-
-    Raises:
-        FileNotFoundError: If *root_dir* (or the requested split
-            subdirectory) does not exist.
-        ValueError: If *split* is not one of the accepted values.
     """
     valid_splits = ("train", "test", "both")
     if split not in valid_splits:
@@ -44,51 +82,39 @@ def load(root_dir="data/raw/att_faces", split="both"):
             f"split must be one of {valid_splits}, got {split!r}"
         )
 
-    root_dir = os.path.normpath(root_dir)
-    if not os.path.isdir(root_dir):
-        raise FileNotFoundError(f"AT&T root directory not found: {root_dir}")
-
-    # Determine which subdirectories to scan.
-    dirs_to_scan: list[str] = []
-    if split in ("train", "both"):
-        train_dir = os.path.join(root_dir, "Training")
-        if os.path.isdir(train_dir):
-            dirs_to_scan.append(train_dir)
-        else:
-            raise FileNotFoundError(
-                f"Training directory not found: {train_dir}"
-            )
-    if split in ("test", "both"):
-        test_dir = os.path.join(root_dir, "Testing")
-        if os.path.isdir(test_dir):
-            dirs_to_scan.append(test_dir)
-        else:
-            raise FileNotFoundError(
-                f"Testing directory not found: {test_dir}"
-            )
+    extract_path = download_and_extract(root_dir)
 
     images: list[np.ndarray] = []
     subject_ids: list[str] = []
 
-    for parent_dir in dirs_to_scan:
-        # Iterate over subject folders in sorted order for determinism.
-        for entry in sorted(os.listdir(parent_dir)):
-            if not _SUBJECT_DIR_RE.match(entry):
-                continue  # skip non-subject entries (e.g. TestData.txt)
-            subject_path = os.path.join(parent_dir, entry)
-            if not os.path.isdir(subject_path):
+    for entry in sorted(os.listdir(extract_path)):
+        if not _SUBJECT_DIR_RE.match(entry):
+            continue
+            
+        subject_path = os.path.join(extract_path, entry)
+        if not os.path.isdir(subject_path):
+            continue
+
+        subject_num = int(_SUBJECT_DIR_RE.match(entry).group(1))
+        subject_id = f"s{subject_num:02d}"
+
+        for img_file in sorted(os.listdir(subject_path)):
+            if not img_file.lower().endswith(".pgm"):
                 continue
-
-            # Normalize subject ID to zero-padded form (e.g. "s01").
-            subject_num = int(_SUBJECT_DIR_RE.match(entry).group(1))
-            subject_id = f"s{subject_num:02d}"
-
-            for img_file in sorted(os.listdir(subject_path)):
-                if not img_file.lower().endswith(".pgm"):
-                    continue
-                img_path = os.path.join(subject_path, img_file)
-                img = Image.open(img_path).convert("L")
-                images.append(np.array(img, dtype=np.uint8))
-                subject_ids.append(subject_id)
+                
+            # Each subject has 1.pgm to 10.pgm
+            # We assign 1-9 to train, 10 to test
+            img_num = int(os.path.splitext(img_file)[0])
+            is_test = (img_num == 10)
+            
+            if split == "train" and is_test:
+                continue
+            if split == "test" and not is_test:
+                continue
+                
+            img_path = os.path.join(subject_path, img_file)
+            img = Image.open(img_path).convert("L")
+            images.append(np.array(img, dtype=np.uint8))
+            subject_ids.append(subject_id)
 
     return images, subject_ids

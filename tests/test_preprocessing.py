@@ -19,9 +19,9 @@ def _load_att_sample():
 
 def _load_yale_sample():
     """Load a single Yale face image for testing."""
-    from data.loaders import yale_loader
-    images, _, _ = yale_loader.load(split="train")
-    return images[0]
+    from data.loaders import att_loader
+    images, _ = att_loader.load(split="train")
+    return images[1]
 
 
 # ---------------------------------------------------------------------------

@@ -18,7 +18,7 @@ from core.decomposition.eigenfaces import Eigenfaces
 from core.matching import distances, threshold
 from core.pipeline import _preprocess_single
 from core.preprocessing import aligner, detector, normalizer
-from data.loaders import att_loader, lfw_loader, yale_loader
+from data.loaders import att_loader, lfw_loader
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -57,15 +57,11 @@ def main():
     # ------------------------------------------------------------------
     # Step 1: Load training data
     # ------------------------------------------------------------------
-    print("\n[1/8] Loading AT&T training data...")
-    att_images, att_ids = att_loader.load(split="train")
+    print("\n[1/8] Loading AT&T data (for Training + Calibration)...")
+    att_images, att_ids = att_loader.load(split="both")
     print(f"  AT&T: {len(att_images)} images, {len(set(att_ids))} subjects")
 
-    print("[1/8] Loading Yale training data...")
-    yale_images, yale_ids, _ = yale_loader.load(split="train")
-    print(f"  Yale: {len(yale_images)} images, {len(set(yale_ids))} subjects")
-
-    print("[1/8] Loading LFW training data...")
+    print("[1/8] Loading LFW data (for Training only)...")
     lfw_images, lfw_ids = lfw_loader.load(min_faces=2)
     print(f"  LFW: {len(lfw_images)} images, {len(set(lfw_ids))} subjects")
 
@@ -74,34 +70,29 @@ def main():
     # ------------------------------------------------------------------
     print("\n[2/8] Preprocessing training images...")
     train_vectors = []
-    train_valid_ids = []
+    calib_vectors = []
+    calib_ids = []
     skipped = 0
 
     for i, (img, sid) in enumerate(zip(att_images, att_ids)):
         vec = _preprocess_single(img, IMAGE_SIZE)
         if vec is not None:
             train_vectors.append(vec)
-            train_valid_ids.append(f"att_{sid}")
+            calib_vectors.append(vec)
+            calib_ids.append(f"att_{sid}")
         else:
             skipped += 1
         if (i + 1) % 100 == 0:
             print(f"  AT&T: {i + 1}/{len(att_images)} processed")
 
-    for i, (img, sid) in enumerate(zip(yale_images, yale_ids)):
-        vec = _preprocess_single(img, IMAGE_SIZE)
-        if vec is not None:
-            train_vectors.append(vec)
-            train_valid_ids.append(f"yale_{sid}")
-        else:
-            skipped += 1
-
     for i, (img, sid) in enumerate(zip(lfw_images, lfw_ids)):
         vec = _preprocess_single(img, IMAGE_SIZE)
         if vec is not None:
             train_vectors.append(vec)
-            train_valid_ids.append(f"lfw_{sid}")
         else:
             skipped += 1
+        if (i + 1) % 500 == 0:
+            print(f"  LFW: {i + 1}/{len(lfw_images)} processed")
         if (i + 1) % 500 == 0:
             print(f"  LFW: {i + 1}/{len(lfw_images)} processed")
 
@@ -125,18 +116,13 @@ def main():
     total_variance = eigenfaces.explained_variance_ratio.sum()
     print(f"  Explained variance: {total_variance:.4f} ({total_variance*100:.1f}%)")
 
-    # ------------------------------------------------------------------
-    # Step 4: Build genuine/impostor pairs (using Training data)
-    # ------------------------------------------------------------------
-    print("\n[4/8] Building genuine/impostor pairs...")
-
-    # Transform training vectors into eigenspace
-    calib_matrix = np.array(train_vectors)
+    # Transform calibration vectors (ONLY AT&T) into eigenspace
+    calib_matrix = np.array(calib_vectors)
     calib_coeffs = eigenfaces.transform(calib_matrix)
 
     # Group by subject
     subject_indices: dict[str, list[int]] = {}
-    for idx, sid in enumerate(train_valid_ids):
+    for idx, sid in enumerate(calib_ids):
         subject_indices.setdefault(sid, []).append(idx)
 
     genuine_distances = {"cosine": []}
