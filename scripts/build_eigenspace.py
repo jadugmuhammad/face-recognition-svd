@@ -16,8 +16,9 @@ import numpy as np
 
 from core.decomposition.eigenfaces import Eigenfaces
 from core.matching import distances, threshold
+from core.pipeline import _preprocess_single
 from core.preprocessing import aligner, detector, normalizer
-from data.loaders import att_loader, fgnet_loader, yale_loader
+from data.loaders import att_loader, yale_loader
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -30,47 +31,6 @@ ARTIFACTS_DIR = os.path.join(
 )
 
 
-# ---------------------------------------------------------------------------
-# Preprocessing helpers
-# ---------------------------------------------------------------------------
-
-def preprocess_image_haar(image):
-    """Preprocess a single image using Haar Cascade detection.
-
-    Returns the flattened, normalized face vector, or None if
-    face/eye detection fails.
-    """
-    face_box = detector.detect_face(image)
-    if face_box is None:
-        return None
-
-    x, y, w, h = face_box
-    face_crop = image[y : y + h, x : x + w]
-
-    eyes = detector.detect_eyes(face_crop)
-    if eyes is None:
-        # Fallback: estimate eye positions at 30%/70% x, 35% y
-        ew = int(w * 0.30)
-        ew2 = int(w * 0.70)
-        eh = int(h * 0.35)
-        eyes = [(ew, eh), (ew2, eh)]
-
-    aligned = aligner.align_face(face_crop, eyes, output_size=IMAGE_SIZE)
-    normalized = normalizer.normalize(aligned)
-    return normalizer.flatten(normalized)
-
-
-def preprocess_image_landmarks(image, landmarks_array):
-    """Preprocess a single image using pre-computed landmarks.
-
-    The landmarks provide exact eye positions, bypassing Haar Cascade.
-    """
-    eye_positions = fgnet_loader.get_eye_positions_from_landmarks(
-        landmarks_array
-    )
-    aligned = aligner.align_face(image, eye_positions, output_size=IMAGE_SIZE)
-    normalized = normalizer.normalize(aligned)
-    return normalizer.flatten(normalized)
 
 
 # ---------------------------------------------------------------------------
@@ -110,21 +70,24 @@ def main():
     # ------------------------------------------------------------------
     print("\n[2/8] Preprocessing training images...")
     train_vectors = []
+    train_valid_ids = []
     skipped = 0
 
-    for i, img in enumerate(att_images):
-        vec = preprocess_image_haar(img)
+    for i, (img, sid) in enumerate(zip(att_images, att_ids)):
+        vec = _preprocess_single(img, IMAGE_SIZE)
         if vec is not None:
             train_vectors.append(vec)
+            train_valid_ids.append(f"att_{sid}")
         else:
             skipped += 1
         if (i + 1) % 100 == 0:
             print(f"  AT&T: {i + 1}/{len(att_images)} processed")
 
-    for i, img in enumerate(yale_images):
-        vec = preprocess_image_haar(img)
+    for i, (img, sid) in enumerate(zip(yale_images, yale_ids)):
+        vec = _preprocess_single(img, IMAGE_SIZE)
         if vec is not None:
             train_vectors.append(vec)
+            train_valid_ids.append(f"yale_{sid}")
         else:
             skipped += 1
 
@@ -133,6 +96,10 @@ def main():
         f"  Total: {len(train_vectors)} vectors "
         f"({skipped} skipped due to detection failure)"
     )
+    print(f"  Matrix shape: {train_matrix.shape}")
+
+
+
     print(f"  Matrix shape: {train_matrix.shape}")
 
     # ------------------------------------------------------------------
@@ -145,93 +112,30 @@ def main():
     print(f"  Explained variance: {total_variance:.4f} ({total_variance*100:.1f}%)")
 
     # ------------------------------------------------------------------
-    # Step 4: Load FG-NET for calibration
+    # Step 4: Build genuine/impostor pairs (using Training data)
     # ------------------------------------------------------------------
-    print("\n[4/8] Loading FG-NET for calibration...")
-    fgnet_images, fgnet_ids, fgnet_ages = fgnet_loader.load()
-    fgnet_landmarks = fgnet_loader.load_landmarks()
-    print(
-        f"  FG-NET: {len(fgnet_images)} images, "
-        f"{len(set(fgnet_ids))} subjects, "
-        f"{len(fgnet_landmarks)} landmarks"
-    )
+    print("\n[4/8] Building genuine/impostor pairs...")
 
-    # Preprocess FG-NET images
-    print("\n[5/8] Preprocessing FG-NET images...")
-    fgnet_vectors = []
-    fgnet_valid_ids = []
-    fgnet_valid_ages = []
-    fgnet_skipped = 0
-
-    # Build a mapping from image index to landmark key
-    fgnet_filenames = sorted(os.listdir(
-        os.path.join(os.path.normpath("data/raw/fgnet"), "images")
-    ))
-    fgnet_stems = []
-    for fn in fgnet_filenames:
-        match = fgnet_loader.FILENAME_PATTERN.match(os.path.splitext(fn)[0])
-        if match:
-            fgnet_stems.append(os.path.splitext(fn)[0].lower())
-        else:
-            fgnet_stems.append(None)
-
-    for i, (img, sid, age) in enumerate(
-        zip(fgnet_images, fgnet_ids, fgnet_ages)
-    ):
-        # Try landmark-based preprocessing first
-        stem = fgnet_stems[i] if i < len(fgnet_stems) else None
-        vec = None
-
-        if stem and stem in fgnet_landmarks:
-            try:
-                vec = preprocess_image_landmarks(img, fgnet_landmarks[stem])
-            except Exception:
-                vec = None
-
-        # Fallback to Haar Cascade
-        if vec is None:
-            vec = preprocess_image_haar(img)
-
-        if vec is not None:
-            fgnet_vectors.append(vec)
-            fgnet_valid_ids.append(sid)
-            fgnet_valid_ages.append(age)
-        else:
-            fgnet_skipped += 1
-
-        if (i + 1) % 200 == 0:
-            print(f"  FG-NET: {i + 1}/{len(fgnet_images)} processed")
-
-    print(
-        f"  Processed: {len(fgnet_vectors)} "
-        f"({fgnet_skipped} skipped)"
-    )
-
-    # ------------------------------------------------------------------
-    # Step 5: Build genuine/impostor pairs
-    # ------------------------------------------------------------------
-    print("\n[6/8] Building genuine/impostor pairs...")
-
-    # Transform FG-NET vectors into eigenspace
-    fgnet_matrix = np.array(fgnet_vectors)
-    fgnet_coeffs = eigenfaces.transform(fgnet_matrix)
+    # Transform training vectors into eigenspace
+    calib_matrix = np.array(train_vectors)
+    calib_coeffs = eigenfaces.transform(calib_matrix)
 
     # Group by subject
     subject_indices: dict[str, list[int]] = {}
-    for idx, sid in enumerate(fgnet_valid_ids):
+    for idx, sid in enumerate(train_valid_ids):
         subject_indices.setdefault(sid, []).append(idx)
 
     genuine_distances = {"cosine": []}
     impostor_distances = {"cosine": []}
 
-    subjects = sorted(subject_indices.keys())
+    subjects = sorted(list(subject_indices.keys()))
 
     # Genuine pairs: same subject, different images
     for sid in subjects:
         indices = subject_indices[sid]
         for i in range(len(indices)):
             for j in range(i + 1, len(indices)):
-                a, b = fgnet_coeffs[indices[i]], fgnet_coeffs[indices[j]]
+                a, b = calib_coeffs[indices[i]], calib_coeffs[indices[j]]
                 genuine_distances["cosine"].append(distances.cosine(a, b))
 
     # Impostor pairs: different subjects (sample to keep manageable)
@@ -246,7 +150,7 @@ def main():
         s1, s2 = rng.choice(subjects, size=2, replace=False)
         i1 = rng.choice(subject_indices[s1])
         i2 = rng.choice(subject_indices[s2])
-        a, b = fgnet_coeffs[i1], fgnet_coeffs[i2]
+        a, b = calib_coeffs[i1], calib_coeffs[i2]
         impostor_distances["cosine"].append(distances.cosine(a, b))
         impostor_count += 1
 
@@ -256,9 +160,9 @@ def main():
     )
 
     # ------------------------------------------------------------------
-    # Step 6: Compute calibration statistics
+    # Step 5: Compute calibration statistics
     # ------------------------------------------------------------------
-    print("\n[7/8] Computing calibration statistics...")
+    print("\n[5/8] Computing calibration statistics...")
 
     calibration = {"image_size": list(IMAGE_SIZE), "n_components": N_COMPONENTS}
 
@@ -305,9 +209,9 @@ def main():
         )
 
     # ------------------------------------------------------------------
-    # Step 7: Save artifacts
+    # Step 6: Save artifacts
     # ------------------------------------------------------------------
-    print(f"\n[8/8] Saving artifacts to {ARTIFACTS_DIR}/...")
+    print(f"\n[6/8] Saving artifacts to {ARTIFACTS_DIR}/...")
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
 
     # Eigenspace data

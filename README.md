@@ -6,12 +6,12 @@ robust ketika dua foto diambil pada usia yang berbeda.
 
 ## Status
 
-Repo ini telah **selesai diimplementasikan** secara end-to-end. Semua modul di `core/`, `data/loaders/`, dan `app/` telah berfungsi penuh (98/98 tests passed).
+Repo ini telah **selesai diimplementasikan** secara end-to-end. Semua modul di `core/`, `data/loaders/`, dan `app/` telah berfungsi penuh (85/85 tests passed).
 
-- [x] `data/loaders/*` — parsing dataset (AT&T, Yale, FG-NET)
-- [x] `core/preprocessing/*` — deteksi wajah, alignment (landmark/Haar), normalisasi (CLAHE)
-- [x] `core/decomposition/eigenfaces.py` — PCA/SVD
-- [x] `core/matching/*` — multi-metric distance (Euclidean, Cosine, Mahalanobis) + ensemble + threshold (ROC/EER)
+- [x] `data/loaders/*` — parsing dataset (AT&T, Yale)
+- [x] `core/preprocessing/*` — auto-grayscaling, deteksi wajah, alignment (Haar), normalisasi (CLAHE)
+- [x] `core/decomposition/eigenfaces.py` — PCA/SVD dengan **Whitening** (menyeimbangkan bobot varians fitur)
+- [x] `core/matching/*` — perbandingan vektor fitur menggunakan murni **Cosine Distance** + threshold berbasis ROC/EER
 - [x] `core/pipeline.py` — orkestrasi end-to-end
 - [x] `scripts/build_eigenspace.py` — build + kalibrasi artifacts
 - [x] `app/*` — UI Streamlit terintegrasi penuh
@@ -36,9 +36,8 @@ Semua dataset diunduh manual (tidak otomatis lewat pip) dan diletakkan di
 
 | Dataset | Kegunaan | Catatan unduh |
 |---|---|---|
-| [AT&T / ORL](https://cam-orl.co.uk/facedatabase.html) | Bangun eigenspace dasar | Unduh, ekstrak ke `data/raw/att_faces/` |
-| [Extended Yale Face Database B](https://paperswithcode.com/dataset/yale-face) | Bangun eigenspace (variasi cahaya) | Ekstrak ke `data/raw/yale_faces/` |
-| [FG-NET](https://yanweifu.github.io/FG_NET_data/) | Validasi cross-age (genuine/impostor pairs) | Perlu request akses/lisensi, ekstrak ke `data/raw/fgnet/` |
+| [AT&T / ORL](https://cam-orl.co.uk/facedatabase.html) | Bangun eigenspace dasar & Kalibrasi Threshold | Unduh, ekstrak ke `data/raw/att_faces/` |
+| [Extended Yale Face Database B](https://paperswithcode.com/dataset/yale-face) | Bangun eigenspace (variasi cahaya) & Kalibrasi Threshold | Ekstrak ke `data/raw/yale_faces/` |
 
 ## Instalasi
 

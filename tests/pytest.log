@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/f-01/Documents/Projects/face-recognition-svd
+plugins: anyio-4.14.0
+collected 85 items
+
+tests/test_decomposition.py ..............                               [ 16%]
+tests/test_loaders.py .........................                          [ 45%]
+tests/test_matching.py .................                                 [ 65%]
+tests/test_pipeline.py ......                                            [ 72%]
+tests/test_preprocessing.py .......................                      [100%]
+
+============================= 85 passed in 10.13s ==============================
