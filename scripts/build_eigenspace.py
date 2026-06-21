@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 
 from core.decomposition.eigenfaces import Eigenfaces
-from core.matching import distances, ensemble, threshold
+from core.matching import distances, threshold
 from core.preprocessing import aligner, detector, normalizer
 from data.loaders import att_loader, fgnet_loader, yale_loader
 
@@ -221,8 +221,8 @@ def main():
     for idx, sid in enumerate(fgnet_valid_ids):
         subject_indices.setdefault(sid, []).append(idx)
 
-    genuine_distances = {"euclidean": [], "cosine": [], "mahalanobis": []}
-    impostor_distances = {"euclidean": [], "cosine": [], "mahalanobis": []}
+    genuine_distances = {"cosine": []}
+    impostor_distances = {"cosine": []}
 
     subjects = sorted(subject_indices.keys())
 
@@ -232,17 +232,11 @@ def main():
         for i in range(len(indices)):
             for j in range(i + 1, len(indices)):
                 a, b = fgnet_coeffs[indices[i]], fgnet_coeffs[indices[j]]
-                genuine_distances["euclidean"].append(
-                    distances.euclidean(a, b)
-                )
                 genuine_distances["cosine"].append(distances.cosine(a, b))
-                genuine_distances["mahalanobis"].append(
-                    distances.mahalanobis(a, b, eigenfaces.explained_variance)
-                )
 
     # Impostor pairs: different subjects (sample to keep manageable)
     rng = np.random.RandomState(42)
-    n_impostor_target = len(genuine_distances["euclidean"])
+    n_impostor_target = len(genuine_distances["cosine"])
     impostor_count = 0
     max_attempts = n_impostor_target * 10
 
@@ -253,16 +247,12 @@ def main():
         i1 = rng.choice(subject_indices[s1])
         i2 = rng.choice(subject_indices[s2])
         a, b = fgnet_coeffs[i1], fgnet_coeffs[i2]
-        impostor_distances["euclidean"].append(distances.euclidean(a, b))
         impostor_distances["cosine"].append(distances.cosine(a, b))
-        impostor_distances["mahalanobis"].append(
-            distances.mahalanobis(a, b, eigenfaces.explained_variance)
-        )
         impostor_count += 1
 
     print(
-        f"  Genuine pairs: {len(genuine_distances['euclidean'])}, "
-        f"Impostor pairs: {len(impostor_distances['euclidean'])}"
+        f"  Genuine pairs: {len(genuine_distances['cosine'])}, "
+        f"Impostor pairs: {len(impostor_distances['cosine'])}"
     )
 
     # ------------------------------------------------------------------
@@ -272,7 +262,7 @@ def main():
 
     calibration = {"image_size": list(IMAGE_SIZE), "n_components": N_COMPONENTS}
 
-    for metric in ["euclidean", "cosine", "mahalanobis"]:
+    for metric in ["cosine"]:
         gen = np.array(genuine_distances[metric])
         imp = np.array(impostor_distances[metric])
 
@@ -281,10 +271,10 @@ def main():
 
         # Normalize all scores to confidence values
         gen_conf = np.array([
-            ensemble.normalize_score(d, mean_all, std_all) for d in gen
+            distances.normalize_score(d, mean_all, std_all) for d in gen
         ])
         imp_conf = np.array([
-            ensemble.normalize_score(d, mean_all, std_all) for d in imp
+            distances.normalize_score(d, mean_all, std_all) for d in imp
         ])
 
         # ROC and EER
@@ -305,22 +295,14 @@ def main():
             "roc_thresholds": thresholds.tolist(),
         }
 
+        calibration["cosine_threshold"] = float(eer_threshold)
+
         print(
             f"  {metric}: EER={eer_value:.4f}, "
             f"threshold={eer_threshold:.4f}, "
             f"genuine_mean={gen.mean():.4f}, "
             f"impostor_mean={imp.mean():.4f}"
         )
-
-    # Compute ensemble threshold (average of per-metric EER thresholds)
-    eer_thresholds = [
-        calibration[m]["eer_threshold"]
-        for m in ["euclidean", "cosine", "mahalanobis"]
-    ]
-    calibration["ensemble_threshold"] = float(np.mean(eer_thresholds))
-    print(
-        f"\n  Ensemble threshold: {calibration['ensemble_threshold']:.4f}"
-    )
 
     # ------------------------------------------------------------------
     # Step 7: Save artifacts

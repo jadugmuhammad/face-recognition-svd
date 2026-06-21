@@ -4,21 +4,6 @@ import numpy as np
 from scipy.spatial.distance import cosine as _scipy_cosine
 
 
-def euclidean(vector_a, vector_b) -> float:
-    """Euclidean distance between two coefficient vectors.
-
-    Args:
-        vector_a: First eigenspace coefficient vector.
-        vector_b: Second eigenspace coefficient vector.
-
-    Returns:
-        float: L2 distance (≥ 0). Identical vectors → 0.
-    """
-    a = np.asarray(vector_a, dtype=np.float64)
-    b = np.asarray(vector_b, dtype=np.float64)
-    return float(np.linalg.norm(a - b))
-
-
 def cosine(vector_a, vector_b) -> float:
     """Cosine distance (1 − cosine similarity) between two vectors.
 
@@ -40,31 +25,28 @@ def cosine(vector_a, vector_b) -> float:
     return float(_scipy_cosine(a, b))
 
 
-def mahalanobis(vector_a, vector_b, explained_variance) -> float:
-    """Mahalanobis-style distance, weighted by PCA explained variance.
+def normalize_score(raw_score: float, mean: float, std: float) -> float:
+    """Z-score normalize a raw distance, then map to [0, 1] via sigmoid.
 
-    This is effectively a variance-weighted Euclidean distance:
-    components with large variance (common patterns) get less weight,
-    while components with small variance (unique details) get more
-    weight.  This matches the original Eigenfaces paper
-    (Turk & Pentland, 1991).
+    A raw distance **smaller** than the mean (closer faces) maps to a
+    confidence **above** 0.5, and vice versa.  The sigmoid ensures the
+    output is smoothly bounded in ``(0, 1)``.
 
     Args:
-        vector_a: First eigenspace coefficient vector.
-        vector_b: Second eigenspace coefficient vector.
-        explained_variance: Per-component variance from the fitted
-            Eigenfaces model, used as the (diagonal) covariance
-            estimate.
+        raw_score: The raw distance value.
+        mean: Mean distance from calibration data.
+        std: Standard deviation from calibration data.
 
     Returns:
-        float: Weighted distance (≥ 0).
+        float: Normalized confidence in ``(0, 1)``.
     """
-    a = np.asarray(vector_a, dtype=np.float64)
-    b = np.asarray(vector_b, dtype=np.float64)
-    var = np.asarray(explained_variance, dtype=np.float64)
+    if std < 1e-12:
+        # Degenerate case — all calibration distances were identical.
+        return 0.5
 
-    # Avoid division by zero for near-zero variance components.
-    var_safe = np.maximum(var, 1e-12)
+    # Z-score (negate so that smaller distance → higher confidence).
+    z = -(raw_score - mean) / std
 
-    diff = a - b
-    return float(np.sqrt(np.sum(diff ** 2 / var_safe)))
+    # Sigmoid to map to (0, 1).
+    confidence = 1.0 / (1.0 + np.exp(-z))
+    return float(confidence)

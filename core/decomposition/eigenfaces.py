@@ -23,7 +23,7 @@ class Eigenfaces:
 
     def __init__(self, n_components: int = 50):
         self.n_components = n_components
-        self.pca = PCA(n_components=n_components)
+        self.pca = PCA(n_components=n_components, whiten=True)
         self.mean_face = None
         self.components = None
         self.explained_variance = None

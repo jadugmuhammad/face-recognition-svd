@@ -22,7 +22,7 @@ def render():
     with open(_CALIBRATION_PATH, "r") as f:
         calibration = json.load(f)
 
-    metrics = ["euclidean", "cosine", "mahalanobis"]
+    metric = "cosine"
 
     # --- EER summary ---
     st.subheader("Ringkasan Equal Error Rate (EER)")
@@ -31,19 +31,13 @@ def render():
         "Semakin rendah EER, semakin akurat sistem."
     )
 
-    cols = st.columns(len(metrics))
-    for i, metric in enumerate(metrics):
-        cal = calibration.get(metric, {})
-        with cols[i]:
-            st.metric(
-                metric.capitalize(),
-                f"EER: {cal.get('eer', 0):.4f}",
-                delta=f"θ = {cal.get('eer_threshold', 0):.4f}",
-                delta_color="off",
-            )
-
-    ensemble_thresh = calibration.get("ensemble_threshold", 0.5)
-    st.info(f"**Ensemble threshold (rata-rata EER):** {ensemble_thresh:.4f}")
+    cal = calibration.get(metric, {})
+    st.metric(
+        "Cosine Distance",
+        f"EER: {cal.get('eer', 0):.4f}",
+        delta=f"θ = {cal.get('eer_threshold', 0):.4f}",
+        delta_color="off",
+    )
 
     # --- ROC curves ---
     st.subheader("ROC Curves")
@@ -52,29 +46,26 @@ def render():
         "semakin baik."
     )
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
-    colors = ["#e94560", "#0f3460", "#533483"]
+    fig, ax = plt.subplots(figsize=(6, 5))
+    color = "#0f3460"
 
-    for idx, metric in enumerate(metrics):
-        cal = calibration.get(metric, {})
-        fpr = cal.get("roc_fpr", [])
-        tpr = cal.get("roc_tpr", [])
-        eer = cal.get("eer", 0)
+    fpr = cal.get("roc_fpr", [])
+    tpr = cal.get("roc_tpr", [])
+    eer = cal.get("eer", 0)
 
-        ax = axes[idx]
-        ax.plot(fpr, tpr, color=colors[idx], linewidth=2)
-        ax.plot([0, 1], [0, 1], "k--", alpha=0.3, label="Random")
-        ax.plot(
-            [eer], [1 - eer], "ro", markersize=8,
-            label=f"EER = {eer:.4f}"
-        )
-        ax.set_xlabel("False Positive Rate")
-        ax.set_ylabel("True Positive Rate")
-        ax.set_title(f"{metric.capitalize()}")
-        ax.legend(loc="lower right", fontsize=8)
-        ax.grid(alpha=0.3)
-        ax.set_xlim(-0.02, 1.02)
-        ax.set_ylim(-0.02, 1.02)
+    ax.plot(fpr, tpr, color=color, linewidth=2)
+    ax.plot([0, 1], [0, 1], "k--", alpha=0.3, label="Random")
+    ax.plot(
+        [eer], [1 - eer], "ro", markersize=8,
+        label=f"EER = {eer:.4f}"
+    )
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title("Cosine ROC Curve")
+    ax.legend(loc="lower right", fontsize=8)
+    ax.grid(alpha=0.3)
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.02, 1.02)
 
     fig.tight_layout()
     st.pyplot(fig)
@@ -88,32 +79,28 @@ def render():
         "menandakan metrik kesulitan membedakan."
     )
 
-    fig2, axes2 = plt.subplots(1, 3, figsize=(14, 4))
+    fig2, ax = plt.subplots(figsize=(6, 5))
 
-    for idx, metric in enumerate(metrics):
-        cal = calibration.get(metric, {})
-        gen_mean = cal.get("genuine_mean", 0)
-        gen_std = cal.get("genuine_std", 1)
-        imp_mean = cal.get("impostor_mean", 0)
-        imp_std = cal.get("impostor_std", 1)
+    gen_mean = cal.get("genuine_mean", 0)
+    gen_std = cal.get("genuine_std", 1)
+    imp_mean = cal.get("impostor_mean", 0)
+    imp_std = cal.get("impostor_std", 1)
 
-        ax = axes2[idx]
+    # Generate approximate distributions for visualization
+    x_min = min(gen_mean - 3 * gen_std, imp_mean - 3 * imp_std)
+    x_max = max(gen_mean + 3 * gen_std, imp_mean + 3 * imp_std)
+    x = np.linspace(x_min, x_max, 200)
 
-        # Generate approximate distributions for visualization
-        x_min = min(gen_mean - 3 * gen_std, imp_mean - 3 * imp_std)
-        x_max = max(gen_mean + 3 * gen_std, imp_mean + 3 * imp_std)
-        x = np.linspace(x_min, x_max, 200)
+    gen_pdf = _gaussian(x, gen_mean, gen_std)
+    imp_pdf = _gaussian(x, imp_mean, imp_std)
 
-        gen_pdf = _gaussian(x, gen_mean, gen_std)
-        imp_pdf = _gaussian(x, imp_mean, imp_std)
-
-        ax.fill_between(x, gen_pdf, alpha=0.4, color="#2ecc71", label="Genuine")
-        ax.fill_between(x, imp_pdf, alpha=0.4, color="#e74c3c", label="Impostor")
-        ax.set_xlabel("Jarak")
-        ax.set_ylabel("Densitas")
-        ax.set_title(f"{metric.capitalize()}")
-        ax.legend(fontsize=8)
-        ax.grid(alpha=0.3)
+    ax.fill_between(x, gen_pdf, alpha=0.4, color="#2ecc71", label="Genuine")
+    ax.fill_between(x, imp_pdf, alpha=0.4, color="#e74c3c", label="Impostor")
+    ax.set_xlabel("Jarak")
+    ax.set_ylabel("Densitas")
+    ax.set_title("Cosine Distance Distribution")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)
 
     fig2.tight_layout()
     st.pyplot(fig2)
@@ -121,17 +108,14 @@ def render():
 
     # --- Raw stats ---
     with st.expander("Detail statistik kalibrasi"):
-        for metric in metrics:
-            cal = calibration.get(metric, {})
-            st.markdown(f"**{metric.capitalize()}**")
-            st.json({
-                "genuine_mean": cal.get("genuine_mean"),
-                "genuine_std": cal.get("genuine_std"),
-                "impostor_mean": cal.get("impostor_mean"),
-                "impostor_std": cal.get("impostor_std"),
-                "eer": cal.get("eer"),
-                "eer_threshold": cal.get("eer_threshold"),
-            })
+        st.json({
+            "genuine_mean": cal.get("genuine_mean"),
+            "genuine_std": cal.get("genuine_std"),
+            "impostor_mean": cal.get("impostor_mean"),
+            "impostor_std": cal.get("impostor_std"),
+            "eer": cal.get("eer"),
+            "eer_threshold": cal.get("eer_threshold"),
+        })
 
 
 def _gaussian(x, mean, std):

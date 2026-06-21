@@ -39,15 +39,11 @@ def render(result=None):
     # --- Metric breakdown table ---
     st.subheader("Breakdown per metrik")
 
-    metric_data = []
-    for metric in ["euclidean", "cosine", "mahalanobis"]:
-        raw = result.metric_scores.get(metric, 0)
-        conf = result.metric_confidences.get(metric, 0)
-        metric_data.append({
-            "Metrik": metric.capitalize(),
-            "Jarak (raw)": f"{raw:.6f}",
-            "Confidence": f"{conf:.4f}",
-        })
+    metric_data = [{
+        "Metrik": "Cosine",
+        "Jarak (raw)": f"{result.distance:.6f}",
+        "Confidence": f"{result.confidence:.4f}",
+    }]
 
     st.table(metric_data)
 

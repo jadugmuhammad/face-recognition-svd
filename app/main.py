@@ -25,15 +25,6 @@ state.init_session_state()
 with st.sidebar:
     st.header("⚙️ Pengaturan")
 
-    st.session_state["metric_mode"] = st.selectbox(
-        "Mode metrik",
-        options=["ensemble", "euclidean", "cosine", "mahalanobis"],
-        index=["ensemble", "euclidean", "cosine", "mahalanobis"].index(
-            st.session_state["metric_mode"]
-        ),
-        help="Ensemble menggabungkan ketiga metrik; pilih satu untuk mode tunggal.",
-    )
-
     st.session_state["threshold"] = st.slider(
         "Threshold keputusan",
         min_value=0.0,
@@ -82,7 +73,6 @@ with tab_compare:
                         img_a,
                         img_b,
                         config={
-                            "metric_mode": st.session_state["metric_mode"],
                             "threshold": st.session_state["threshold"],
                         },
                     )

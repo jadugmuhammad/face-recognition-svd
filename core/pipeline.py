@@ -9,10 +9,11 @@ import json
 import os
 from dataclasses import dataclass, field
 
+import cv2
 import numpy as np
 
 from core.decomposition.eigenfaces import Eigenfaces
-from core.matching import distances, ensemble, threshold
+from core.matching import distances, threshold
 from core.preprocessing import aligner, detector, normalizer
 
 # Default paths (relative to project root).
@@ -29,11 +30,8 @@ class FaceComparisonResult:
 
     Attributes:
         is_same: Final SAME/DIFFERENT decision.
-        confidence: Combined confidence score in [0, 1].
-        metric_scores: Per-metric raw distance scores,
-            e.g. ``{"euclidean": 3.14, ...}``.
-        metric_confidences: Per-metric normalized confidence scores
-            in [0, 1].
+        confidence: Normalized confidence score in [0, 1].
+        distance: Raw cosine distance score.
         threshold: The threshold used for the decision.
         reconstruction_a: Reconstructed (PCA-denoised) version of
             image A as a 2-D array, or ``None``.
@@ -43,8 +41,7 @@ class FaceComparisonResult:
 
     is_same: bool
     confidence: float
-    metric_scores: dict
-    metric_confidences: dict = field(default_factory=dict)
+    distance: float
     threshold: float = 0.5
     reconstruction_a: np.ndarray | None = None
     reconstruction_b: np.ndarray | None = None
@@ -115,6 +112,13 @@ def _preprocess_single(image, image_size):
         numpy.ndarray | None: Flattened, normalized face vector, or
         ``None`` if preprocessing fails.
     """
+    # Grayscale conversion if image has color channels
+    if len(image.shape) == 3:
+        if image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
+        else:
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
     face_box = detector.detect_face(image)
     if face_box is None:
         # Fallback: treat the entire image as a face.
@@ -144,8 +148,6 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
         image_b: Second input image (grayscale numpy array).
         config: Optional overrides:
             - ``"n_components"`` (int): ignored for now (uses trained value).
-            - ``"metric_mode"`` (str): ``"ensemble"`` | ``"euclidean"``
-              | ``"cosine"`` | ``"mahalanobis"``.
             - ``"threshold"`` (float): decision threshold override.
             - ``"eigenspace_path"`` (str): path to ``eigenspace.npz``.
             - ``"calibration_path"`` (str): path to ``calibration.json``.
@@ -184,38 +186,18 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
     coeffs_a = ef.transform(vec_a)
     coeffs_b = ef.transform(vec_b)
 
-    # Compute raw distances
-    raw_scores = {
-        "euclidean": distances.euclidean(coeffs_a, coeffs_b),
-        "cosine": distances.cosine(coeffs_a, coeffs_b),
-        "mahalanobis": distances.mahalanobis(
-            coeffs_a, coeffs_b, ef.explained_variance
-        ),
-    }
+    # Compute distance
+    distance = distances.cosine(coeffs_a, coeffs_b)
 
-    # Normalize to confidence scores using calibration stats
-    metric_confidences = {}
-    for metric in raw_scores:
-        cal = calibration.get(metric, {})
-        mean = cal.get("mean", 0.0)
-        std = cal.get("std", 1.0)
-        metric_confidences[metric] = ensemble.normalize_score(
-            raw_scores[metric], mean, std
-        )
-
-    # Determine which metrics to use
-    metric_mode = config.get("metric_mode", "ensemble")
-
-    if metric_mode == "ensemble":
-        confidence = ensemble.combine(metric_confidences)
-    elif metric_mode in metric_confidences:
-        confidence = metric_confidences[metric_mode]
-    else:
-        confidence = ensemble.combine(metric_confidences)
+    # Normalize to confidence score using calibration stats
+    cal = calibration.get("cosine", {})
+    mean = cal.get("mean", 0.0)
+    std = cal.get("std", 1.0)
+    confidence = distances.normalize_score(distance, mean, std)
 
     # Decision
     thresh = config.get(
-        "threshold", calibration.get("ensemble_threshold", 0.5)
+        "threshold", calibration.get("cosine_threshold", 0.5)
     )
     is_same = threshold.decide(confidence, thresh)
 
@@ -230,8 +212,7 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
     return FaceComparisonResult(
         is_same=is_same,
         confidence=confidence,
-        metric_scores=raw_scores,
-        metric_confidences=metric_confidences,
+        distance=distance,
         threshold=thresh,
         reconstruction_a=recon_a,
         reconstruction_b=recon_b,

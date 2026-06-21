@@ -37,10 +37,7 @@ class TestPipeline:
         result = compare(img_a, img_b)
         assert isinstance(result.is_same, bool)
         assert 0.0 <= result.confidence <= 1.0
-        assert "euclidean" in result.metric_scores
-        assert "cosine" in result.metric_scores
-        assert "mahalanobis" in result.metric_scores
-        assert "euclidean" in result.metric_confidences
+        assert hasattr(result, "distance")
         assert result.reconstruction_a is not None
         assert result.reconstruction_b is not None
 
@@ -63,17 +60,10 @@ class TestPipeline:
         result_diff = compare(img_diff_a, img_diff_b)
 
         # The scores should be numerically different
-        assert result_same.metric_scores != result_diff.metric_scores
+        assert result_same.distance != result_diff.distance
         # Both should produce valid confidences
         assert 0.0 <= result_same.confidence <= 1.0
         assert 0.0 <= result_diff.confidence <= 1.0
-
-    def test_metric_mode_single(self):
-        """Single-metric mode should use only that metric's confidence."""
-        img_a, img_b = _load_att_pair_same()
-        result = compare(img_a, img_b, config={"metric_mode": "cosine"})
-        # Confidence should equal the cosine metric confidence
-        assert abs(result.confidence - result.metric_confidences["cosine"]) < 1e-10
 
     def test_custom_threshold(self):
         img_a, img_b = _load_att_pair_same()
@@ -90,5 +80,4 @@ class TestPipeline:
         img_a, _ = _load_att_pair_same()
         result = compare(img_a, img_a)
         assert result.confidence > 0.5
-        assert result.metric_scores["euclidean"] < 1e-6
-        assert result.metric_scores["cosine"] < 1e-6
+        assert result.distance < 1e-6
