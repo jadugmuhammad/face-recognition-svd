@@ -18,14 +18,14 @@ from core.decomposition.eigenfaces import Eigenfaces
 from core.matching import distances, threshold
 from core.pipeline import _preprocess_single
 from core.preprocessing import aligner, detector, normalizer
-from data.loaders import att_loader, yale_loader
+from data.loaders import att_loader, lfw_loader, yale_loader
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 IMAGE_SIZE = (100, 100)  # (width, height)
-N_COMPONENTS = 50
+N_COMPONENTS = 150
 ARTIFACTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "artifacts"
 )
@@ -65,6 +65,10 @@ def main():
     yale_images, yale_ids, _ = yale_loader.load(split="train")
     print(f"  Yale: {len(yale_images)} images, {len(set(yale_ids))} subjects")
 
+    print("[1/8] Loading LFW training data...")
+    lfw_images, lfw_ids = lfw_loader.load(min_faces=2)
+    print(f"  LFW: {len(lfw_images)} images, {len(set(lfw_ids))} subjects")
+
     # ------------------------------------------------------------------
     # Step 2: Preprocess training images
     # ------------------------------------------------------------------
@@ -90,6 +94,16 @@ def main():
             train_valid_ids.append(f"yale_{sid}")
         else:
             skipped += 1
+
+    for i, (img, sid) in enumerate(zip(lfw_images, lfw_ids)):
+        vec = _preprocess_single(img, IMAGE_SIZE)
+        if vec is not None:
+            train_vectors.append(vec)
+            train_valid_ids.append(f"lfw_{sid}")
+        else:
+            skipped += 1
+        if (i + 1) % 500 == 0:
+            print(f"  LFW: {i + 1}/{len(lfw_images)} processed")
 
     train_matrix = np.array(train_vectors)
     print(

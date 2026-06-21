@@ -182,9 +182,11 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
             "or aligned."
         )
 
+    k = config.get("n_components", None)
+    
     # Transform into eigenspace
-    coeffs_a = ef.transform(vec_a)
-    coeffs_b = ef.transform(vec_b)
+    coeffs_a = ef.transform(vec_a, k=k)
+    coeffs_b = ef.transform(vec_b, k=k)
 
     # Compute distance
     distance = distances.cosine(coeffs_a, coeffs_b)
@@ -202,10 +204,10 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
     is_same = threshold.decide(confidence, thresh)
 
     # Reconstructions for visualization
-    recon_a = ef.inverse_transform(coeffs_a).reshape(
+    recon_a = ef.inverse_transform(coeffs_a, k=k).reshape(
         image_size[1], image_size[0]
     )
-    recon_b = ef.inverse_transform(coeffs_b).reshape(
+    recon_b = ef.inverse_transform(coeffs_b, k=k).reshape(
         image_size[1], image_size[0]
     )
 

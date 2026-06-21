@@ -48,12 +48,15 @@ class Eigenfaces:
 
         return self
 
-    def transform(self, face_vectors):
+    def transform(self, face_vectors, k: int | None = None):
         """Project face vectors into eigenspace coefficients.
 
         Args:
             face_vectors: Array of shape ``(n_samples, n_pixels)`` or
                 ``(n_pixels,)`` for a single face.
+            k: Optional. The number of principal components to use for
+                the projection. If provided, returns only the first ``k``
+                coefficients.
 
         Returns:
             numpy.ndarray: Coefficients of shape
@@ -66,15 +69,23 @@ class Eigenfaces:
             face_vectors = face_vectors.reshape(1, -1)
 
         coefficients = self.pca.transform(face_vectors)
+        if k is not None:
+            k = min(k, self.n_components)
+            coefficients = coefficients[:, :k]
 
         return coefficients[0] if single else coefficients
 
-    def inverse_transform(self, coefficients):
+    def inverse_transform(self, coefficients, k: int | None = None):
         """Reconstruct face vectors from eigenspace coefficients.
 
         Args:
             coefficients: Array of shape ``(n_samples, n_components)``
                 or ``(n_components,)`` for a single face.
+            k: Optional. If the provided coefficients represent fewer
+                components than the fitted model (e.g., if they were
+                truncated using ``transform(..., k=k)``), they will be
+                zero-padded to reconstruct the face using only the first
+                ``k`` eigenfaces.
 
         Returns:
             numpy.ndarray: Reconstructed face vectors.
@@ -83,6 +94,13 @@ class Eigenfaces:
         single = coefficients.ndim == 1
         if single:
             coefficients = coefficients.reshape(1, -1)
+
+        # Pad with zeros if coefficients are truncated (e.g., length k < n_components)
+        current_len = coefficients.shape[1]
+        target_len = self.pca.n_components_
+        if current_len < target_len:
+            pad_width = target_len - current_len
+            coefficients = np.pad(coefficients, ((0, 0), (0, pad_width)), mode='constant')
 
         reconstructed = self.pca.inverse_transform(coefficients)
 

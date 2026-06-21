@@ -34,6 +34,15 @@ with st.sidebar:
         help="Confidence di atas threshold → SAMA, di bawah → BEDA.",
     )
 
+    st.session_state["n_components"] = st.slider(
+        "Jumlah Komponen PCA (k)",
+        min_value=1,
+        max_value=150,
+        value=st.session_state.get("n_components", 150),
+        step=1,
+        help="Semakin kecil k, semakin banyak detail yang diabaikan. (Maksimal 150 sesuai training LFW)",
+    )
+
     st.divider()
     st.caption(
         "**Face Recognition (PCA/SVD)**\n\n"
@@ -74,6 +83,7 @@ with tab_compare:
                         img_b,
                         config={
                             "threshold": st.session_state["threshold"],
+                            "n_components": st.session_state["n_components"],
                         },
                     )
                     st.session_state["comparison_result"] = result
