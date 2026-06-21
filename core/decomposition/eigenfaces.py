@@ -1,5 +1,6 @@
 """Eigenfaces: PCA/SVD-based face decomposition, built on scikit-learn."""
 
+import numpy as np
 from sklearn.decomposition import PCA
 
 
@@ -10,24 +11,104 @@ class Eigenfaces:
         - fit(): build the eigenspace from a training set of face vectors
         - transform(): project a face vector into eigenspace coefficients
         - inverse_transform(): reconstruct a face from its coefficients
+
+    After ``fit()``, the following attributes are available:
+
+    Attributes:
+        mean_face: The mean face vector (average of all training faces).
+        components: The principal components (eigenfaces), shape
+            ``(n_components, n_pixels)``.
+        explained_variance: Per-component variance captured.
     """
 
     def __init__(self, n_components: int = 50):
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)
+        self.mean_face = None
+        self.components = None
+        self.explained_variance = None
 
     def fit(self, face_vectors):
         """Fit the eigenspace on a matrix of training face vectors.
 
         Args:
-            face_vectors: Array of shape (n_samples, n_pixels).
+            face_vectors: Array of shape ``(n_samples, n_pixels)``.
+                Each row is a flattened, normalized face image.
+
+        Returns:
+            self: For method chaining.
         """
-        raise NotImplementedError
+        face_vectors = np.asarray(face_vectors, dtype=np.float64)
+        self.pca.fit(face_vectors)
+
+        # Cache key attributes for easy access.
+        self.mean_face = self.pca.mean_.copy()
+        self.components = self.pca.components_.copy()
+        self.explained_variance = self.pca.explained_variance_.copy()
+
+        return self
 
     def transform(self, face_vectors):
-        """Project face vectors into eigenspace coefficients."""
-        raise NotImplementedError
+        """Project face vectors into eigenspace coefficients.
+
+        Args:
+            face_vectors: Array of shape ``(n_samples, n_pixels)`` or
+                ``(n_pixels,)`` for a single face.
+
+        Returns:
+            numpy.ndarray: Coefficients of shape
+            ``(n_samples, n_components)`` or ``(n_components,)`` for
+            a single face.
+        """
+        face_vectors = np.asarray(face_vectors, dtype=np.float64)
+        single = face_vectors.ndim == 1
+        if single:
+            face_vectors = face_vectors.reshape(1, -1)
+
+        coefficients = self.pca.transform(face_vectors)
+
+        return coefficients[0] if single else coefficients
 
     def inverse_transform(self, coefficients):
-        """Reconstruct face vectors from eigenspace coefficients."""
-        raise NotImplementedError
+        """Reconstruct face vectors from eigenspace coefficients.
+
+        Args:
+            coefficients: Array of shape ``(n_samples, n_components)``
+                or ``(n_components,)`` for a single face.
+
+        Returns:
+            numpy.ndarray: Reconstructed face vectors.
+        """
+        coefficients = np.asarray(coefficients, dtype=np.float64)
+        single = coefficients.ndim == 1
+        if single:
+            coefficients = coefficients.reshape(1, -1)
+
+        reconstructed = self.pca.inverse_transform(coefficients)
+
+        return reconstructed[0] if single else reconstructed
+
+    @property
+    def explained_variance_ratio(self):
+        """Per-component explained variance ratio (sums to ≤ 1.0).
+
+        Useful for scree plots showing how much variance each
+        eigenface captures.
+        """
+        return self.pca.explained_variance_ratio_
+
+    def get_eigenface(self, index, image_shape=None):
+        """Get the i-th eigenface (principal component).
+
+        Args:
+            index: Component index (0 = most important).
+            image_shape: If provided, reshape the component back to
+                2D for visualization.
+
+        Returns:
+            numpy.ndarray: The eigenface vector (1D) or image (2D).
+        """
+        eigenface = self.components[index]
+        if image_shape is not None:
+            eigenface = eigenface.reshape(image_shape)
+        return eigenface
