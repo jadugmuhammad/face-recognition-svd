@@ -11,8 +11,18 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
+import json
 from app import state
 from app.components import calibration_view, eigenspace_explorer, result_view, upload_widget
+
+# Attempt to load default calibrated threshold
+DEFAULT_THRESHOLD = 0.42
+try:
+    with open("artifacts/calibration.json", "r") as f:
+        cal_data = json.load(f)
+        DEFAULT_THRESHOLD = cal_data.get("cosine_threshold", 0.42)
+except Exception:
+    pass
 
 st.set_page_config(
     page_title="Face Recognition (PCA/SVD)",
@@ -26,12 +36,12 @@ with st.sidebar:
     st.header("⚙️ Pengaturan")
 
     st.session_state["threshold"] = st.slider(
-        "Threshold keputusan",
+        "Threshold Kemiripan (Confidence)",
         min_value=0.0,
         max_value=1.0,
-        value=st.session_state["threshold"],
+        value=st.session_state.get("threshold", DEFAULT_THRESHOLD),
         step=0.01,
-        help="Confidence di atas threshold → SAMA, di bawah → BEDA.",
+        help="Semakin kecil = semakin longgar (mudah SAMA). Semakin besar = semakin ketat (sulit SAMA).",
     )
 
     st.session_state["n_components"] = st.slider(
