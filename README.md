@@ -34,16 +34,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Running
+## 1. Membangun Model (Wajib Dijalankan Pertama Kali)
 
-```bash
-streamlit run app/main.py
-```
-
-Untuk membangun eigenspace + kalibrasi threshold (dataset akan diunduh otomatis ke `data/raw/` jika belum ada):
+Sebelum menjalankan aplikasi, Anda diwajibkan untuk mengunduh dataset dan membangun model *eigenspace*. Proses ini hanya perlu dilakukan satu kali:
 
 ```bash
 python scripts/build_eigenspace.py
+```
+*(Catatan: Skrip ini akan mengunduh dataset LFW dan AT&T secara otomatis ke dalam folder `data/raw/` jika belum ada).*
+
+## 2. Menjalankan Aplikasi
+
+Setelah file model `artifacts/eigenspace.npz` berhasil tercipta, Anda dapat menjalankan UI Streamlit:
+
+```bash
+streamlit run app/main.py
 ```
 
 ## Testing
