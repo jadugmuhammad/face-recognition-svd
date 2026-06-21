@@ -10,10 +10,10 @@ Repo ini baru di tahap **setup struktur**. Modul-modul di `core/` dan
 `data/loaders/` masih berupa skeleton (`raise NotImplementedError`) — lihat
 checklist di bawah.
 
-- [ ] `data/loaders/*` — parsing dataset
-- [ ] `core/preprocessing/*` — deteksi wajah, alignment, normalisasi
-- [ ] `core/decomposition/eigenfaces.py` — PCA/SVD
-- [ ] `core/matching/*` — multi-metric distance + ensemble + threshold
+- [x] `data/loaders/*` — parsing dataset
+- [x] `core/preprocessing/*` — deteksi wajah, alignment, normalisasi
+- [x] `core/decomposition/eigenfaces.py` — PCA/SVD
+- [x] `core/matching/*` — multi-metric distance + ensemble + threshold
 - [ ] `core/pipeline.py` — orkestrasi end-to-end
 - [ ] `scripts/build_eigenspace.py` — build + kalibrasi artifacts
 - [x] `app/*` — kerangka UI Streamlit (sudah jalan, tapi logikanya placeholder)
