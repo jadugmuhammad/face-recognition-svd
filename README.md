@@ -1,7 +1,7 @@
 # face-recognition-svd
 
 Aplikasi Streamlit untuk membandingkan dua wajah (SAMA / BEDA orang) memakai
-**PCA/SVD (Eigenfaces)** klasik — tanpa deep learning. Dirancang agar tetap
+**PCA/SVD (Eigenfaces)** klasik. Dirancang agar tetap
 robust ketika dua foto diambil pada usia yang berbeda.
 
 ## Arsitektur
@@ -29,30 +29,43 @@ Semua dataset (Kecuali Yale) diunduh dan diekstrak **secara otomatis** oleh skri
 
 > **Catatan Yale Dataset:** Server asli universitas untuk dataset Extended Yale B sudah *offline*. Untuk menggunakan Yale, Anda harus mengunduhnya secara manual (misalnya melalui Kaggle) dan mengekstrak foldernya ke `data/raw/yale_faces/`. Jika folder ini tidak ada, skrip akan **melewati (skip)** dataset Yale secara otomatis dan hanya menggunakan AT&T + LFW.
 
-## Instalasi
+## Instalasi & Run
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+Karena repositori ini sudah menyertakan file model (*pre-computed eigenspace*) di dalam folder `artifacts/`, Anda tidak perlu membangun model dari awal. Cukup *install dependencies* dan jalankan aplikasi.
 
-## 1. Membangun Model (Wajib Dijalankan Pertama Kali)
+1. Buat dan aktifkan *virtual environment*:
+   ```bash
+   # Windows:
+   py -3.12 -m venv .venv
+   .venv\Scripts\activate
+   
+   # Linux / MacOS:
+   python3.12 -m venv .venv
+   source .venv/bin/activate
+   ```
 
-Sebelum menjalankan aplikasi, Anda diwajibkan untuk mengunduh dataset dan membangun model *eigenspace*. Proses ini hanya perlu dilakukan satu kali:
+2. Instal *dependencies*:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Jalankan aplikasi Streamlit:
+   ```bash
+   # Windows:
+   streamlit.exe run app/main.py
+
+   # Linux / MacOS:
+   streamlit run app/main.py
+   ```
+
+### (Opsional) Membangun Model Ulang
+
+Jika ingin membangun ulang model *eigenspace* (misalnya untuk mengubah resolusi atau jumlah komponen utama), jalankan skrip berikut (pastikan `.venv` sudah aktif):
 
 ```bash
 python scripts/build_eigenspace.py
 ```
 *(Catatan: Skrip ini akan mengunduh dataset LFW dan AT&T secara otomatis ke dalam folder `data/raw/` jika belum ada. Pastikan Anda telah meletakkan dataset Yale di `data/raw/yale_faces` secara manual jika ingin memanfaatkannya).*
-
-## 2. Menjalankan Aplikasi
-
-Setelah file model `artifacts/eigenspace.npz` berhasil tercipta, Anda dapat menjalankan UI Streamlit:
-
-```bash
-streamlit run app/main.py
-```
 
 ## Testing
 
