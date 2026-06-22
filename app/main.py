@@ -56,15 +56,13 @@ with st.sidebar:
     st.divider()
     st.caption(
         "**Face Recognition (PCA/SVD)**\n\n"
-        "Membandingkan dua wajah tanpa deep learning — murni Eigenfaces, "
-        "preprocessing, dan multi-metric matching."
+        "Membandingkan dua wajah menggunakan Eigenfaces."
     )
 
 # --- Main content ---
 st.title("🔍 Face Recognition dengan PCA/SVD")
 st.caption(
-    "Membandingkan dua wajah tanpa deep learning — murni Eigenfaces, "
-    "preprocessing, dan multi-metric matching."
+    "Membandingkan dua wajah menggunakan Eigenfaces."
 )
 
 tab_compare, tab_eigenspace, tab_calibration = st.tabs(

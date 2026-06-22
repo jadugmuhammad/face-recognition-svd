@@ -21,12 +21,12 @@ def render(result=None):
     # --- Decision banner ---
     if result.is_same:
         st.success(
-            f"✅ **SAMA** — Confidence: **{result.confidence:.4f}** "
+            f"✅ **SAMA** dengan Confidence: **{result.confidence:.4f}** "
             f"(threshold: {result.threshold:.4f})"
         )
     else:
         st.error(
-            f"❌ **BEDA** — Confidence: **{result.confidence:.4f}** "
+            f"❌ **BEDA** dengan Confidence: **{result.confidence:.4f}** "
             f"(threshold: {result.threshold:.4f})"
         )
 
@@ -51,8 +51,8 @@ def render(result=None):
     if result.reconstruction_a is not None and result.reconstruction_b is not None:
         st.subheader("Rekonstruksi PCA")
         st.caption(
-            "Gambar yang direkonstruksi dari koefisien eigenspace — "
-            "menunjukkan apa yang 'dilihat' oleh PCA."
+            "Gambar yang direkonstruksi dari koefisien eigenspace. "
+            "Ini menunjukkan apa yang dilihat oleh PCA."
         )
         col1, col2 = st.columns(2)
         with col1:

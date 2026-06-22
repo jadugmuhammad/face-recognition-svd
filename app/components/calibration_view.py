@@ -28,7 +28,7 @@ def render():
     st.subheader("Ringkasan Equal Error Rate (EER)")
     st.caption(
         "EER adalah titik di mana False Positive Rate = False Negative Rate. "
-        "Semakin rendah EER, semakin akurat sistem."
+        "Semakin rendah EER, maka sistem semakin akurat."
     )
 
     cal = calibration.get(metric, {})
@@ -42,8 +42,7 @@ def render():
     # --- ROC curves ---
     st.subheader("ROC Curves")
     st.caption(
-        "Kurva ROC per metrik — semakin mendekati sudut kiri atas, "
-        "semakin baik."
+        "Kurva ROC per metrik. Semakin mendekati sudut kiri atas, maka semakin baik"
     )
 
     fig, ax = plt.subplots(figsize=(6, 5))
@@ -75,8 +74,8 @@ def render():
     st.subheader("Distribusi jarak: Genuine vs Impostor")
     st.caption(
         "Distribusi jarak (raw) untuk pasangan genuine (orang sama) dan "
-        "impostor (orang berbeda) dari FG-NET. Overlap yang besar "
-        "menandakan metrik kesulitan membedakan."
+        "impostor (orang berbeda). Overlap yang besar "
+        "menandakan metrik kesulitan untuk membedakannya."
     )
 
     fig2, ax = plt.subplots(figsize=(6, 5))

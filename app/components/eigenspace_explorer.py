@@ -30,8 +30,8 @@ def render():
     # --- Mean face ---
     st.subheader("Mean face (wajah rata-rata)")
     st.caption(
-        "Rata-rata dari semua wajah dalam training set — "
-        "ini yang dikurangkan dari setiap wajah sebelum PCA."
+        "Rata-rata dari semua wajah dalam training set. "
+        "Ini merupakan rata-rata yang dikurangkan dari setiap wajah sebelum PCA."
     )
     mean_img = _normalize(mean_face.reshape(img_shape))
     st.image(mean_img, width=200)
@@ -39,7 +39,7 @@ def render():
     # --- Top eigenfaces ---
     st.subheader("Top eigenfaces")
     st.caption(
-        "Komponen utama PCA — pola variasi wajah paling dominan. "
+        "Komponen utama PCA menangkap pola variasi wajah paling dominan. "
         "Komponen pertama menangkap variasi terbesar."
     )
 
@@ -63,8 +63,8 @@ def render():
     # --- Scree plot ---
     st.subheader("Scree plot (explained variance)")
     st.caption(
-        "Berapa persen variasi yang ditangkap oleh masing-masing komponen. "
-        "Kurva kumulatif menunjukkan total variasi yang di-retain."
+        "Persentase variasi yang ditangkap oleh masing-masing komponen. "
+        "Kurva kumulatif yang menunjukkan total variasi yang dipertahankan."
     )
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 4))
