@@ -4,6 +4,13 @@ Aplikasi Streamlit untuk membandingkan dua wajah (SAMA / BEDA orang) memakai
 **PCA/SVD (Eigenfaces)** klasik. Dirancang agar tetap
 robust ketika dua foto diambil pada usia yang berbeda.
 
+## Fitur Utama
+
+- **Pilihan Metrik Jarak**: Membandingkan wajah menggunakan jarak **Cosine** atau **Euclidean**. Hasil kalibrasi *threshold* akan menyesuaikan secara dinamis.
+- **Pengaturan Resolusi PCA**: Anda dapat mengubah jumlah komponen utama (*principal components* / nilai `k`) secara interaktif untuk menganalisis dampaknya.
+- **Visualisasi Kalibrasi**: Dilengkapi dengan visualisasi distribusi skor jarak, kurva ROC, dan *Equal Error Rate* (EER) untuk setiap metrik.
+- **Rekonstruksi PCA**: Melihat bagaimana PCA merepresentasikan wajah dengan noise yang telah dihilangkan (berdasarkan koefisien yang diproyeksikan ke *eigenspace*).
+
 ## Arsitektur
 
 ```

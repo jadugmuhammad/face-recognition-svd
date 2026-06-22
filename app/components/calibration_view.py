@@ -22,8 +22,16 @@ def render():
     with open(_CALIBRATION_PATH, "r") as f:
         calibration = json.load(f)
 
-    metric = "cosine"
+    tab_cosine, tab_euclidean = st.tabs(["Cosine Distance", "Euclidean Distance"])
 
+    with tab_cosine:
+        _render_metric_stats("cosine", calibration)
+
+    with tab_euclidean:
+        _render_metric_stats("euclidean", calibration)
+
+
+def _render_metric_stats(metric, calibration):
     # --- EER summary ---
     st.subheader("Ringkasan Equal Error Rate (EER)")
     st.caption(
@@ -33,7 +41,7 @@ def render():
 
     cal = calibration.get(metric, {})
     st.metric(
-        "Cosine Distance",
+        f"{metric.capitalize()} Distance",
         f"EER: {cal.get('eer', 0):.4f}",
         delta=f"θ = {cal.get('eer_threshold', 0):.4f}",
         delta_color="off",
@@ -60,7 +68,7 @@ def render():
     )
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
-    ax.set_title("Cosine ROC Curve")
+    ax.set_title(f"{metric.capitalize()} ROC Curve")
     ax.legend(loc="lower right", fontsize=8)
     ax.grid(alpha=0.3)
     ax.set_xlim(-0.02, 1.02)
@@ -97,7 +105,7 @@ def render():
     ax.fill_between(x, imp_pdf, alpha=0.4, color="#e74c3c", label="Impostor")
     ax.set_xlabel("Jarak")
     ax.set_ylabel("Densitas")
-    ax.set_title("Cosine Distance Distribution")
+    ax.set_title(f"{metric.capitalize()} Distance Distribution")
     ax.legend(fontsize=8)
     ax.grid(alpha=0.3)
 

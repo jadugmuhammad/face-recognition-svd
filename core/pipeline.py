@@ -42,6 +42,7 @@ class FaceComparisonResult:
     is_same: bool
     confidence: float
     distance: float
+    metric: str = "cosine"
     threshold: float = 0.5
     reconstruction_a: np.ndarray | None = None
     reconstruction_b: np.ndarray | None = None
@@ -183,23 +184,27 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
         )
 
     k = config.get("n_components", None)
+    metric_name = config.get("metric", "cosine")
     
     # Transform into eigenspace
     coeffs_a = ef.transform(vec_a, k=k)
     coeffs_b = ef.transform(vec_b, k=k)
 
     # Compute distance
-    distance = distances.cosine(coeffs_a, coeffs_b)
+    if metric_name == "euclidean":
+        distance = distances.euclidean(coeffs_a, coeffs_b)
+    else:
+        distance = distances.cosine(coeffs_a, coeffs_b)
 
     # Normalize to confidence score using calibration stats
-    cal = calibration.get("cosine", {})
+    cal = calibration.get(metric_name, {})
     mean = cal.get("mean", 0.0)
     std = cal.get("std", 1.0)
     confidence = distances.normalize_score(distance, mean, std)
 
     # Decision
     thresh = config.get(
-        "threshold", calibration.get("cosine_threshold", 0.5)
+        "threshold", calibration.get(f"{metric_name}_threshold", 0.5)
     )
     is_same = threshold.decide(confidence, thresh)
 
@@ -215,6 +220,7 @@ def compare(image_a, image_b, config: dict | None = None) -> FaceComparisonResul
         is_same=is_same,
         confidence=confidence,
         distance=distance,
+        metric=metric_name,
         threshold=thresh,
         reconstruction_a=recon_a,
         reconstruction_b=recon_b,

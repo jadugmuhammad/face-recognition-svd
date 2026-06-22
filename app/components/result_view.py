@@ -40,7 +40,7 @@ def render(result=None):
     st.subheader("Breakdown per metrik")
 
     metric_data = [{
-        "Metrik": "Cosine",
+        "Metrik": result.metric.capitalize(),
         "Jarak (raw)": f"{result.distance:.6f}",
         "Confidence": f"{result.confidence:.4f}",
     }]

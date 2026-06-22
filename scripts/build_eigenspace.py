@@ -140,8 +140,8 @@ def main():
     for idx, sid in enumerate(calib_ids):
         subject_indices.setdefault(sid, []).append(idx)
 
-    genuine_distances = {"cosine": []}
-    impostor_distances = {"cosine": []}
+    genuine_distances = {"cosine": [], "euclidean": []}
+    impostor_distances = {"cosine": [], "euclidean": []}
 
     subjects = sorted(list(subject_indices.keys()))
 
@@ -152,6 +152,7 @@ def main():
             for j in range(i + 1, len(indices)):
                 a, b = calib_coeffs[indices[i]], calib_coeffs[indices[j]]
                 genuine_distances["cosine"].append(distances.cosine(a, b))
+                genuine_distances["euclidean"].append(distances.euclidean(a, b))
 
     # Impostor pairs: different subjects (sample to keep manageable)
     rng = np.random.RandomState(42)
@@ -167,6 +168,7 @@ def main():
         i2 = rng.choice(subject_indices[s2])
         a, b = calib_coeffs[i1], calib_coeffs[i2]
         impostor_distances["cosine"].append(distances.cosine(a, b))
+        impostor_distances["euclidean"].append(distances.euclidean(a, b))
         impostor_count += 1
 
     print(
@@ -181,7 +183,7 @@ def main():
 
     calibration = {"image_size": list(IMAGE_SIZE), "n_components": N_COMPONENTS}
 
-    for metric in ["cosine"]:
+    for metric in ["cosine", "euclidean"]:
         gen = np.array(genuine_distances[metric])
         imp = np.array(impostor_distances[metric])
 
@@ -214,7 +216,7 @@ def main():
             "roc_thresholds": thresholds.tolist(),
         }
 
-        calibration["cosine_threshold"] = float(eer_threshold)
+        calibration[f"{metric}_threshold"] = float(eer_threshold)
 
         print(
             f"  {metric}: EER={eer_value:.4f}, "

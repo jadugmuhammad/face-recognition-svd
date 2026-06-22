@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.spatial.distance import cosine as _scipy_cosine
+from scipy.spatial.distance import euclidean as _scipy_euclidean
 
 
 def cosine(vector_a, vector_b) -> float:
@@ -23,6 +24,21 @@ def cosine(vector_a, vector_b) -> float:
         return 1.0  # undefined → treat as maximally dissimilar
 
     return float(_scipy_cosine(a, b))
+
+
+def euclidean(vector_a, vector_b) -> float:
+    """Euclidean distance between two vectors.
+
+    Args:
+        vector_a: First eigenspace coefficient vector.
+        vector_b: Second eigenspace coefficient vector.
+
+    Returns:
+        float: The Euclidean distance. ``0.0`` indicates identical vectors.
+    """
+    a = np.asarray(vector_a, dtype=np.float64)
+    b = np.asarray(vector_b, dtype=np.float64)
+    return float(_scipy_euclidean(a, b))
 
 
 def normalize_score(raw_score: float, mean: float, std: float) -> float:

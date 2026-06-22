@@ -15,12 +15,11 @@ import json
 from app import state
 from app.components import calibration_view, eigenspace_explorer, result_view, upload_widget
 
-# Attempt to load default calibrated threshold
-DEFAULT_THRESHOLD = 0.42
+# Attempt to load calibration data
+cal_data = {}
 try:
     with open("artifacts/calibration.json", "r") as f:
         cal_data = json.load(f)
-        DEFAULT_THRESHOLD = cal_data.get("cosine_threshold", 0.42)
 except Exception:
     pass
 
@@ -35,11 +34,22 @@ state.init_session_state()
 with st.sidebar:
     st.header("⚙️ Pengaturan")
 
+    metric_choice = st.selectbox(
+        "Metrik Jarak",
+        options=["cosine", "euclidean"],
+        index=["cosine", "euclidean"].index(st.session_state.get("metric", "cosine")) if "metric" in st.session_state else 0,
+        format_func=lambda x: x.capitalize()
+    )
+
+    if "metric" not in st.session_state or metric_choice != st.session_state["metric"]:
+        st.session_state["metric"] = metric_choice
+        st.session_state["threshold"] = cal_data.get(f"{metric_choice}_threshold", 0.42)
+
     st.session_state["threshold"] = st.slider(
         "Threshold Kemiripan (Confidence)",
         min_value=0.0,
         max_value=1.0,
-        value=st.session_state.get("threshold", DEFAULT_THRESHOLD),
+        value=st.session_state.get("threshold", cal_data.get("cosine_threshold", 0.42)),
         step=0.01,
         help="Semakin kecil = semakin longgar (mudah SAMA). Semakin besar = semakin ketat (sulit SAMA).",
     )
@@ -92,6 +102,7 @@ with tab_compare:
                         config={
                             "threshold": st.session_state["threshold"],
                             "n_components": st.session_state["n_components"],
+                            "metric": st.session_state["metric"],
                         },
                     )
                     st.session_state["comparison_result"] = result
