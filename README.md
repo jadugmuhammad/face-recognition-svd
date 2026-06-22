@@ -58,9 +58,9 @@ Karena repositori ini sudah menyertakan file model (*pre-computed eigenspace*) d
    streamlit run app/main.py
    ```
 
-### (Opsional) Membangun Model Ulang
+### (Opsional) Membuat Ulang Model Eigenspace
 
-Jika ingin membangun ulang model *eigenspace* (misalnya untuk mengubah resolusi atau jumlah komponen utama), jalankan skrip berikut (pastikan `.venv` sudah aktif):
+Jika ingin membuat ulang model *eigenspace* (misalnya untuk mengubah resolusi atau jumlah komponen utama), jalankan skrip berikut (pastikan `.venv` sudah aktif):
 
 ```bash
 python scripts/build_eigenspace.py
